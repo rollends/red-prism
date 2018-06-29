@@ -8,8 +8,9 @@ import  redis
 import  sys
 from    tqdm        import tqdm
 
+log = logging.getLogger('loadredditdata')
+
 def main():
-    log = logging.getLogger('loadredditdata')
     args = get_arguments()
 
     redisdb = redis.StrictRedis(db = 0)
@@ -20,11 +21,12 @@ def main():
         if didsucceed:
             log.info('File %s was loaded successfully.', name)
         else:
-            log.warning('File %s failed to load.\nMessage: %s', name, msg)
+            log.error('File %s failed to load.', name)
 
 def load_reddit_archive(redisdb, subreddit_filter, filename):
     from os.path import basename
     from itertools import islice
+    log = log.getChild('load_reddit_archive')
 
     try:
         archive, process = open_archive(filename)
@@ -33,10 +35,12 @@ def load_reddit_archive(redisdb, subreddit_filter, filename):
 
         for content in islice(subreddit_content, 0, 1):
             if 'title' in content:
+                log.info('Assuming %s contains submissions.', filename)
                 store_post(redisdb, content)
                 for content in tqdm(subreddit_content):
                     store_post(redisdb, content)
             else:
+                log.info('Assuming %s contains comments.', filename)
                 store_comment(redisdb, content)
                 for content in tqdm(subreddit_content):
                     store_comment(redisdb, content)
@@ -98,6 +102,8 @@ def open_archive(filename):
     import os.path as path
     import subprocess as sp
 
+    log = log.getChild('open_archive')
+
     XZ = ['xz', '-dc', '-T', '0', filename]
     BZ2 = ['bzip2', '-dc', filename]
     Run = partial(sp.Popen, bufsize = 1024 * 1024 * 128, stdout = sp.PIPE, stdin = sp.DEVNULL, stderr = sp.DEVNULL)
@@ -105,10 +111,13 @@ def open_archive(filename):
     _, extension = path.splitext(filename)
 
     if extension.lower() == '.xz':
+        log.info('Opening %s archive as an XZ file.', filename)
         process = Run(XZ)
     elif extension.lower() == '.bz2':
+        log.info('Opening %s archive as an Bzip2 file.', filename)
         process = Run(BZ2)
     else:
+        log.error('Could not determine what type of archive %s is.', filename)
         raise Exception("Extension {} wasn't expected.".format(extension))
 
     return (process.stdout, process)
@@ -132,4 +141,10 @@ def get_arguments():
     return parser.parse_args()
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        format='[%(asctime)s] [%(levelname)s] : %(message)s',
+        filename='logs/loadredditdata.log',
+        level=logging.INFO
+    )
     main()
+    logging.shutdown()

@@ -4,6 +4,7 @@ import  argparse
 from    functools               import  partial
 from    itertools               import  chain
 import  json
+import  logging
 import  matplotlib
 import  numpy                   as      np
 import  pickle
@@ -14,116 +15,127 @@ import  scipy.sparse.linalg     as      sparse_linalg
 import  sys
 from    tqdm                    import  tqdm
 
+import  graphhelper
+
 class RedditBasicDigraph:
-    """A weighted digraph representation of the basic influential relationships
-    on Reddit. The representation only models:
-        * Self-Influence.
-        * Top-Level Comment Influence only.
     """
-    class GraphDescriptors:
-        def __init__(self):
-            self.node_count = 0
-            self.node_to_id = list()
-            self.id_to_node = dict()
-            self.posts = set()
-            self.users = set()
-            self.comments_on_post = dict()
+    :class:: RedditBasicDigraph(redisdb, filename = None)
 
-        def add_node(self, hashv):
-            assert(isinstance(hashv, str))
-            self.id_to_node[hashv] = len(self.node_to_id)
-            self.node_to_id.append(hashv)
-            self.node_count = len(self.node_to_id)
+        A digraph representation of the basic influential relationships
+        on Reddit. The model has the following edges:
+          * Submissions are influenced by submitting user.
+          * Submissions are influenced by comments.
+          * Comments are influenced by author and by child comments.
+          * Commenter is influenced by parent post.
+        The edges are weighted equally, so any centrality algorithm will
+        be effectively detecting the number of interactions as opposed
+        to their quality.
 
+        :attribute:: db
 
-    def __init__(self, redisdb, filename=None):
-        self.db = redisdb
+            StrictRedis instance.
 
-        if filename is not None:
-            with open('{}.dat'.format(filename), 'rb') as file:
+        :attribute:: A
+
+            (Sparse) Adjacency matrix representing the weighted
+            digraph.
+
+        :attribute:: desc
+
+            RedisBasicDigraph.GraphDescriptors instance. Provides
+            mappings between indices of the state space and the
+            actual Reddit ids (t3_*, t1_*, and user names).
+
+    """
+
+    def __init__(self, redisdb = None, filename = None):
+        self.log = logging.getLogger(self.__class__.__name__)
+
+        config_file = '{}.dat'.format(filename)
+        mat_file = '{}.npz'.format(filename)
+        if redisdb is None:
+            assert(filename is not None)
+
+            self.log.info('Loading digraph data from %s.', config_file)
+
+            with open(config_file, 'rb') as file:
                 self.desc = pickle.load(file)
-            self.A = sparse.load_npz('{}.npz'.format(filename))
+
+            self.log.info('Loading digraph adjacency matrix from %s.', mat_file)
+            self.A = sparse.load_npz(mat_file)
             return
 
-        self.desc = RedditBasicDigraph.GraphDescriptors()
+        self.log.info('Building Digraph directly from Redis.')
+
+        self.db = redisdb
+        self.desc = graphhelper.GraphDescriptor()
 
         self._add_post_nodes()
         self._add_user_nodes()
 
         # First build the matrix using a fairly mutable representation.
+        self.log.info('Constructing sparse (linked-list) matrix.')
         self.A = sparse.lil_matrix( (self.desc.node_count, self.desc.node_count) )
         self._set_initial_weights()
 
         # Convert the matrix now to a more compressed, rigid representation.
+        self.log.info('Convert adjacency matrix into compressed sparse row representation.')
         self.A = self.A.tocsr()
 
         # Save the form to a file.
-        with open('influencedetector.dat', 'wb') as file:
+        self.log.info('Saving digraph data into %s.', config_file)
+        with open(config_file, 'wb') as file:
             pickle.dump(self.desc, file)
-        sparse.save_npz('influencedetector.npz', self.A)
+        self.log.info('Saving digraph adjacency matrix into %s.', mat_file)
+        sparse.save_npz(mat_file, self.A)
 
     def _set_initial_weights(self):
-        post_enumerator = zip(map(self.desc.id_to_node.get, self.desc.posts), self.desc.posts)
-        for i, post_id in tqdm(post_enumerator, desc='Adding Post-Related Edges'):
+        for i, post_id in tqdm(self.desc.enumerate_posts(), desc='Adding Post-Related Edges'):
             # The post is influenced by the author, in the same weight as
             # the actual score...
             post_author = bytes.decode(self.db.hget(post_id, 'author'))
-            q = self.desc.id_to_node[post_author]
+            q = self.desc.node_index_from_name(post_author)
             self.A[i, q] = 1
 
-            # Go through top level comments.
-            for comment_id in self.desc.comments_on_post[post_id]:
+            # Go through all comments.
+            for j, comment_id in self.desc.enumerate_comments_on(post_id):
                 comment_parent = bytes.decode(self.db.hget(comment_id, 'parent'))
                 comment_author = bytes.decode(self.db.hget(comment_id, 'author'))
 
                 # Comment influences parent.
-                ci = self.desc.id_to_node[comment_parent]
-                cj = self.desc.id_to_node[comment_id]
-                self.A[ci, cj] = 1
+                ci = self.desc.node_index_from_name(comment_parent)
+                self.A[ci, j] = 1
 
                 # Author influences comment
-                ci = self.desc.id_to_node[comment_id]
-                cj = self.desc.id_to_node[comment_author]
-                self.A[ci, cj] = 1
+                cj = self.desc.node_index_from_name(comment_author)
+                self.A[j, cj] = 1
 
                 # Author Influenced by post
-                ci = self.desc.id_to_node[comment_author]
+                ci = self.desc.node_index_from_name(comment_author)
                 self.A[ci, i] = 1
 
         # Users influence themselves.
-        user_enumerator = zip(map(self.desc.id_to_node.get, self.desc.users), self.desc.users)
-        for i, user_id in tqdm(user_enumerator, desc='Adding User Self-Influence Edges'):
+        for i, _ in tqdm(self.desc.enumerate_users(), desc='Adding User Self-Influence Edges'):
             self.A[i, i] = 1
 
     def _add_post_nodes(self):
-        post_stream = self.db.sscan_iter('posts')
+        post_stream = map(bytes.decode, self.db.sscan_iter('posts'))
         for post_id in tqdm(post_stream, desc='Adding Post Nodes'):
-            str_post = bytes.decode(post_id)
-            self.desc.posts.add(str_post)
-            self.desc.add_node(str_post)
-            self._add_comment_nodes(str_post)
+            self.desc.add_post_node(post_id)
+            self._add_comment_nodes(post_id)
 
     def _add_user_nodes(self):
-        user_stream = self.db.sscan_iter('users')
+        user_stream = map(bytes.decode, self.db.sscan_iter('users'))
         for user_id in tqdm(user_stream, desc='Adding User Nodes'):
-            str_user = bytes.decode(user_id)
-            self.desc.users.add(str_user)
-            self.desc.add_node(str_user)
+            self.desc.add_user_node(user_id)
 
     def _add_comment_nodes(self, post_id):
-        comment_set_id = '{}:comments'.format(post_id)
-        comment_stream = self.db.sscan_iter(comment_set_id)
-        comment_set = set()
-        for comment_id in comment_stream:
-            str_comment = bytes.decode(comment_id)
-            self.desc.add_node(str_comment)
-            comment_set.add(str_comment)
-        self.desc.comments_on_post[post_id] = comment_set
+        assert(isinstance(post_id, str))
 
-    def _make_row_stochastic(self):
-        # Find row sum...normalize with respect to that.
-        row_sums = self.A.sum(axis=1)
-        self.A = sparse.diags(np.reciprocal(row_sums.flat)) * self.A
+        comment_set_id = '{}:comments'.format(post_id)
+        comment_stream = map(bytes.decode, self.db.sscan_iter(comment_set_id))
+        for comment_id in comment_stream:
+            self.desc.add_comment_to_post(post_id, comment_id)
 
     def is_row_stochastic(self):
         # Testing it actually did the thing.
@@ -135,7 +147,7 @@ class RedditBasicDigraph:
         # Find the dominant eigenvector.
         p, v = sparse_linalg.eigs(self.A.transpose(), k=1, which='LM', tol=0)
 
-        # Normalize the eigenvector, and confirm it has the desired non-negative requirement.
+        # Normalize the eigenvector
         v = v[:,0] / sum(v[:, 0])
 
         return np.array(v.flat)
@@ -156,11 +168,17 @@ class RedditBasicDigraph:
 def main():
     import matplotlib.pyplot as pyplot
 
+    lg = logging.getLogger('influencedetector')
+
     parser = argparse.ArgumentParser(description='Builds weighted digraph in Redis.')
     parser.add_argument('--graphfile', required=False, default=None)
     arguments = parser.parse_args()
 
-    graph = RedditBasicDigraph(redis.StrictRedis(db = 0), filename=arguments.graphfile)
+    if arguments.graphfile is not None:
+        graph = RedditBasicDigraph(filename=arguments.graphfile)
+    else:
+        graph = RedditBasicDigraph(redisdb = redis.StrictRedis(db = 0),
+                                   filename = 'data/influencedetector')
 
     a = graph.katz_centrality()
     indices = np.argsort(a)
@@ -169,9 +187,15 @@ def main():
     from pprint import pprint
 
     # Top 10 Users
-    top10users = list(map(graph.desc.node_to_id.__getitem__, indices[0:50]))
+    top10users = list(map(graph.desc.name_from_node_index, indices[0:50]))
     pprint(top10users)
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        format='[%(asctime)s] [%(levelname)s] : %(message)s',
+        filename='logs/influencedetector.log',
+        level=logging.INFO
+    )
     main()
+    logging.shutdown()
