@@ -1,3 +1,12 @@
+# Virtual Environment
+bin/
+include/
+lib/
+lib64
+man/
+pyvenv.cfg
+pip-selfcheck.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
