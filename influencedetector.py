@@ -18,37 +18,20 @@ from    tqdm                    import  tqdm
 import  graphhelper
 
 class RedditBasicDigraph:
-    """
-    :class:: RedditBasicDigraph(redisdb, filename = None)
+    """RedditBasicDigraph(redisdb, filename = None)
 
-        A digraph representation of the basic influential relationships
-        on Reddit. The model has the following edges:
-          * Submissions are influenced by submitting user.
-          * Submissions are influenced by comments.
-          * Comments are influenced by author and by child comments.
-          * Commenter is influenced by parent post.
-        The edges are weighted equally, so any centrality algorithm will
-        be effectively detecting the number of interactions as opposed
-        to their quality.
-
-        :attribute:: db
-
-            StrictRedis instance.
-
-        :attribute:: A
-
-            (Sparse) Adjacency matrix representing the weighted
-            digraph.
-
-        :attribute:: desc
-
-            RedisBasicDigraph.GraphDescriptors instance. Provides
-            mappings between indices of the state space and the
-            actual Reddit ids (t3_*, t1_*, and user names).
-
+    A digraph representation of the basic influential relationships
+    on Reddit. The model has the following edges:
+      * Submissions are influenced by submitting user.
+      * Submissions are influenced by comments.
+      * Comments are influenced by author and by child comments.
+      * Commenter is influenced by parent post.
+    The edges are weighted equally, so any centrality algorithm will
+    be effectively detecting the number of interactions as opposed
+    to their quality.
     """
 
-    def __init__(self, redisdb = None, filename = None):
+    def __init__(self, subreddit, redisdb = None, filename = None):
         self.log = logging.getLogger(self.__class__.__name__)
 
         config_file = '{}.dat'.format(filename)
@@ -70,11 +53,11 @@ class RedditBasicDigraph:
         self.db = redisdb
         self.desc = graphhelper.GraphDescriptor()
 
-        self._add_post_nodes()
-        self._add_user_nodes()
+        self._add_post_nodes(subreddit)
+        self._add_user_nodes(subreddit)
 
         # First build the matrix using a fairly mutable representation.
-        self.log.info('Constructing sparse (linked-list) matrix.')
+        self.log.info('Constructing sparse (linked-list) matrix of dimension %d.', self.desc.node_count)
         self.A = sparse.lil_matrix( (self.desc.node_count, self.desc.node_count) )
         self._set_initial_weights()
 
@@ -118,14 +101,14 @@ class RedditBasicDigraph:
         for i, _ in tqdm(self.desc.enumerate_users(), desc='Adding User Self-Influence Edges'):
             self.A[i, i] = 1
 
-    def _add_post_nodes(self):
-        post_stream = map(bytes.decode, self.db.sscan_iter('posts'))
+    def _add_post_nodes(self, subreddit):
+        post_stream = map(bytes.decode, self.db.sscan_iter('{}_posts'.format(subreddit)))
         for post_id in tqdm(post_stream, desc='Adding Post Nodes'):
             self.desc.add_post_node(post_id)
             self._add_comment_nodes(post_id)
 
-    def _add_user_nodes(self):
-        user_stream = map(bytes.decode, self.db.sscan_iter('users'))
+    def _add_user_nodes(self, subreddit):
+        user_stream = map(bytes.decode, self.db.sscan_iter('{}_users'.format(subreddit)))
         for user_id in tqdm(user_stream, desc='Adding User Nodes'):
             self.desc.add_user_node(user_id)
 
@@ -168,16 +151,21 @@ class RedditBasicDigraph:
 def main():
     import matplotlib.pyplot as pyplot
 
-    lg = logging.getLogger('influencedetector')
-
     parser = argparse.ArgumentParser(description='Builds weighted digraph in Redis.')
+    parser.add_argument(
+        'subreddit',
+        metavar = 'SUBREDDIT',
+        type = str,
+        help = 'The subreddit to insert into Redis.'
+    )
     parser.add_argument('--graphfile', required=False, default=None)
     arguments = parser.parse_args()
 
     if arguments.graphfile is not None:
-        graph = RedditBasicDigraph(filename=arguments.graphfile)
+        graph = RedditBasicDigraph(arguments.subreddit, filename=arguments.graphfile)
     else:
-        graph = RedditBasicDigraph(redisdb = redis.StrictRedis(db = 0),
+        graph = RedditBasicDigraph(arguments.subreddit,
+                                   redisdb = redis.StrictRedis(db = 0),
                                    filename = 'data/influencedetector')
 
     a = graph.katz_centrality()
