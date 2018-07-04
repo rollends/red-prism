@@ -166,7 +166,7 @@ def main():
     else:
         graph = RedditBasicDigraph(arguments.subreddit,
                                    redisdb = redis.StrictRedis(db = 0),
-                                   filename = 'data/influencedetector')
+                                   filename = 'data/influencedetector-{}'.format(arguments.subreddit))
 
     a = graph.katz_centrality()
     indices = np.argsort(a)
