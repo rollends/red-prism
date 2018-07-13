@@ -31,7 +31,7 @@ class RedditBasicDigraph:
     to their quality.
     """
 
-    def __init__(self, subreddit, redisdb = None, filename = None):
+    def __init__(self, subreddit, redisdb = None, filename = None, ignore_deleted = True):
         self.log = logging.getLogger(self.__class__.__name__)
 
         config_file = '{}.dat'.format(filename)
@@ -59,7 +59,7 @@ class RedditBasicDigraph:
         # First build the matrix using a fairly mutable representation.
         self.log.info('Constructing sparse (linked-list) matrix of dimension %d.', self.desc.node_count)
         self.A = sparse.lil_matrix( (self.desc.node_count, self.desc.node_count) )
-        self._set_initial_weights()
+        self._set_initial_weights(ignore_deleted)
 
         # Convert the matrix now to a more compressed, rigid representation.
         self.log.info('Convert adjacency matrix into compressed sparse row representation.')
@@ -72,13 +72,16 @@ class RedditBasicDigraph:
         self.log.info('Saving digraph adjacency matrix into %s.', mat_file)
         sparse.save_npz(mat_file, self.A)
 
-    def _set_initial_weights(self):
+    def _set_initial_weights(self, ignored_deleted):
+        deleted_index = self.desc.node_index_from_name('[deleted]')
+
         for i, post_id in tqdm(self.desc.enumerate_posts(), desc='Adding Post-Related Edges'):
             # The post is influenced by the author, in the same weight as
             # the actual score...
             post_author = bytes.decode(self.db.hget(post_id, 'author'))
             q = self.desc.node_index_from_name(post_author)
-            self.A[i, q] = 1
+            if (not ignored_deleted) or q != deleted_index:
+                self.A[i, q] = 1
 
             # Go through all comments.
             for j, comment_id in self.desc.enumerate_comments_on(post_id):
@@ -91,15 +94,18 @@ class RedditBasicDigraph:
 
                 # Author influences comment
                 cj = self.desc.node_index_from_name(comment_author)
-                self.A[j, cj] = 1
+                if (not ignored_deleted) or cj != deleted_index:
+                    self.A[j, cj] = 1
 
                 # Author Influenced by post
                 ci = self.desc.node_index_from_name(comment_author)
-                self.A[ci, i] = 1
+                if (not ignored_deleted) or ci != deleted_index:
+                    self.A[ci, i] = 1
 
         # Users influence themselves.
         for i, _ in tqdm(self.desc.enumerate_users(), desc='Adding User Self-Influence Edges'):
             self.A[i, i] = 1
+
 
     def _add_post_nodes(self, subreddit):
         post_stream = map(bytes.decode, self.db.sscan_iter('{}_posts'.format(subreddit)))
@@ -142,8 +148,10 @@ class RedditBasicDigraph:
         p = sparse_linalg.eigs(self.A, k=1, which='LM', tol=0, return_eigenvectors=False)
         alpha = 1.0 / (2 * np.abs(p))
 
+        M = self.A.transpose().multiply(alpha)
+        b = M.dot(ones)
         while True:
-            ck2 = alpha * self.A.dot(ck1 + ones)
+            ck2 = M.dot(ck1) + b
             if all(np.isclose(ck1, ck2, 1e-9)):
                 return np.array(ck2.flat)
             ck1 = ck2
@@ -158,6 +166,12 @@ def main():
         type = str,
         help = 'The subreddit to insert into Redis.'
     )
+    parser.add_argument(
+        '--ignore-deleted',
+        dest = 'ignore_deleted',
+        action = 'store_true',
+        help = 'Ignores the deleted user if turned on.'
+    )
     parser.add_argument('--graphfile', required=False, default=None)
     arguments = parser.parse_args()
 
@@ -166,7 +180,8 @@ def main():
     else:
         graph = RedditBasicDigraph(arguments.subreddit,
                                    redisdb = redis.StrictRedis(db = 0),
-                                   filename = 'data/influencedetector-{}'.format(arguments.subreddit))
+                                   filename = 'data/influencedetector-{}'.format(arguments.subreddit),
+                                   ignore_deleted = arguments.ignore_deleted)
 
     a = graph.katz_centrality()
     indices = np.argsort(a)
@@ -175,7 +190,7 @@ def main():
     from pprint import pprint
 
     # Top 10 Users
-    top10users = list(map(graph.desc.name_from_node_index, indices[0:50]))
+    top10users = list(map(graph.desc.name_from_node_index, indices[0:10]))
     pprint(top10users)
 
 
