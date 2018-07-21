@@ -30,13 +30,14 @@ On Detection of Influential Users and Content on Reddit*
     Department of Electrical and Computer Engineering,
     Faculty of Engineering,
     University of Waterloo,
-    {\tt\small rollen.dsouza@uwaterloo.ca}
+    \texttt{rollen.dsouza@uwaterloo.ca}
   }%
 }
 
 % STYLING
 \theoremstyle{plain}
 \newtheorem{assumption}{Assumption}[section]
+\newtheorem{claim}{Claim}[section]
 
 
 \tikzset{%
@@ -147,21 +148,49 @@ We model the influence model on a given subreddit as a connection between two gr
   \caption{Graph structure showing the relationship between users and submissions/comments. \(G_P\) are those nodes and edges that are blue. \(G_U\) are those nodes and edges that are red. \(E_P^U\) is the set of edges denoted by broken lines.}
   \label{fig:model:hypergraph}
 \end{figure}
+
+\subsubsection{Graph Model for Centrality Analysis}
 Denote the set of users by \(U\) and the set of submissions and comments by \(P.\) We first define the existence of the digraph \(G_P=(P,E_P)\) that denotes the relationship between submissions and comments. \(E_P\) is constructed in the manner described in Algorithm~\ref{alg:ep}.
 \begin{algorithm}
-  \For{$parent \in P$}{
-    \For{ $child \in P \cap C(P)$ }{
-      put directed edge $(child, parent)$ into $E_P$\;
+  \ForAll{\(\mathtt{parent} \in P\)}{
+    \For{\(\mathtt{child} \in P \cap ChildrenOf(P)\)}{
+      \(E_P \gets E_P \cup \left\{ (\mathtt{parent}, \mathtt{child}) \right\} \)\;
     }
   }
-  \caption{Constructing \(E_P\)}
+  \caption{Constructing \(E_P.\)}
   \label{alg:ep}
 \end{algorithm}
 We give edges in \(E_P\) a universal weight of \(1.\) Weighting using upvotes was considered but was determined to yield results that were not desireable. For one, it was not clear that upvotes were a meaningful method of ranking influence. Further complexity arises when considering controversial content, which has a mix of upvotes and downvotes. A highly controversial topic may be highly influential, which contradicts the idea that upvotes correlate with influence. Possibly given knowledge of the number of voters this problem could be alleviated. However, since not all subreddits release data about how many users voted, it is simpler to reduce the complexity by eliminating any non-trivial weighting method. Observe that \(G_P\) is a forest where the submissions act as roots of the trees.
 
-This structure by itself is not interesting. We now generate a set of edges \(E_P^U\) that connect submissions/comments to users. 
+This structure is not interesting by itself and we need to extend it in order to facilitate analysis. The set of edges \(E_P^U\), that connects submissions/comments to users, is what brings the significant cross-post structure. \(E_P^U\) is generated in the manner described by Algorithm~\ref{alg:epu}. The rules are that: a comment author is influenced by the submission (root in \(G_P\)) and a comment author influences the comment. A more convoluted structure may be derived by instead having the comment author be influenced by the immediate parent comment. This structure was not investigated and could yield differing results. The argument for choosing the structure defined here is that authors may bring the whole context of the submission to a given comment, and not just the parent comment. The directed edge from the author to the submission allows us to model this sort of behaviour. That is, the user is influenced by all content on the submission page. This does ignore temporal effects, and so could yield incorrect results. On the other hand, the model not investigated is not as susceptible to temporal effects as it directly captures the temporal structure. However, it leaves out the ability to model any sort of larger contextual awareness the user may have.
+\begin{algorithm}
+  \ForAll{\(\mathtt{user} \in U\)}{
+    \For{\(p \in P\) and \(\mathtt{user} = AuthorOf(p)\)}{
+      \(\mathtt{root} \gets RootOf(p)\)\;
+      \(E_P^U \gets E_P^U \cup \left\{ (p, \mathtt{user}), (\mathtt{user}, \mathtt{root}) \right\}\)\;
+    }
+  }
+  \caption{Constructing \(E_P^U.\)}
+  \label{alg:epu}
+\end{algorithm}
+The structure described above may be augmented with self-edges for all users and aperiodicity of the resulting graph can be guaranteed.
+\begin{claim}
+  Let the set of vertices be \(N = P \cup U.\) We also let \(E_N = E_P \cup E_P^U \cup \hat{E}\) be a set of edges, where \(\hat{E}\) is the set of directed self-edges for all users in \(U.\) Then \(G' = (N, E_N)\) is an aperiodic graph.
+  \label{claim:g1:aperiodic}
+\end{claim}
+\begin{proof}
+  Easy to see by the fact that cycles of any length may be constructed by including the users in the cycles. The simplest cycle may be constructed (see Figure~\ref{fig:model:hypergraph}) using a commenting user and the associated submission.
+\end{proof}
 
-and \(G_U=(U,E_U,W_U)\) in the following manner.
+\subsubsection{Graph Model for Cluster Analysis}
+Submissions and comments are not directly significant for identifying subgroups within a community of users. The model used here is restricted to a weighted digraph \(G_U = (U, E_U, W_U).\) However, we desire a method of constructing relationships between users that capture ``interaction'' between users. Algorithm~\ref{alg:eu} defines one such construction. It captures the idea that a user Bob is influenced strongly by another user Jenn if Bob comments a lot on content Jenn submits. The algorithm adds an additional requirement: that the interactions are unique modulo the root submission. This essentially attempts to count the number of ``conversations'' taking place between users without having explicit start and stop points.
+\begin{algorithm}
+  \ForAll{\(p \in P\)}{
+\;
+  }
+  \caption{Constructing \(E_U.\)}
+  \label{alg:eu}
+\end{algorithm}
 
 \section{IMPLEMENTATION}
 
