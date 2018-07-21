@@ -3,4 +3,3 @@ numpy>=1.14.3
 redis>=2.10.6
 scipy>=1.1.0
 tqdm>=4.23.4
-praw>=5.4.0
