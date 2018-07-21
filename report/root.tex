@@ -5,9 +5,18 @@
 
 \let\proof\relax
 \let\endproof\relax
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{amsfonts}
 \usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{mathrsfs}
 
-\usetikzlibrary{arrows,decorations,backgrounds,positioning,fit}
+
+\let\labelindent\relax
+\usepackage{enumitem}
+
+\usetikzlibrary{arrows,decorations,positioning,fit}
 
 \IEEEoverridecommandlockouts
 \overrideIEEEmargins
@@ -35,10 +44,17 @@ On Detection of Influential Users and Content on Reddit*
 }
 
 % STYLING
-\theoremstyle{plain}
+\theoremstyle{definition}
 \newtheorem{assumption}{Assumption}[section]
 \newtheorem{claim}{Claim}[section]
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
 
+% DEFINITIONS
+\let\ker\relax
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\ker}{ker}
+\newcommand{\R}{\mathbb{R}}
 
 \tikzset{%
   post/.style={rectangle,draw=blue!70,top color=white,bottom color=blue!20,very thick},
@@ -57,15 +73,14 @@ On Detection of Influential Users and Content on Reddit*
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-
-%% INSERT ABSTRACT
+{\red Fill in abstract.}
 
 \end{abstract}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{INTRODUCTION}
-
+{\red Talk about goals of project, pathway and where we ended up.}
 
 \section{BACKGROUND}
 {\red Talk about graph theory, centrality and Laplacians.}
@@ -197,9 +212,58 @@ Submissions and comments are not directly significant for identifying subgroups 
 {\red Complete explanation of the graph used for cluster analysis.}
 
 \section{IMPLEMENTATION}
-The algorithms used 
+There are two methods of collecting Reddit submission and comment data. There is a live application programming interface (API) available for use, that provides live up-to-date data. The most natural API request available for downloading submissions is limited to the last 1000 submissions on a given subreddit. This substantially limits the amount of data available for collection; for some subreddits this constitutes only a few weeks of data. Other methods to getting this old data exist, but involve using the API in a convoluted manner. A user {\red find reddit user} addressed this problem and collated all data on Reddit for over ten years for the purpose of data analytics. The data can be found online, freely available for use, in an archived format~\cite{Software:RedditArchive}. Submissions and comments are stored in separate archives, organized by months or days. The data is stored in these files as compressed, line-delimited Javascript Objects (JSON).
+
+The analysis focusses on data for the time frame starting at November 2017 and ending in February 2018. I developed a Python script that filters out unnecessary data from these archives and inserts the useful data into a Redis database, a fast in-memory key-value database~\cite{Software:Redis}. The software developed for this project and used for analysis is publicly available on Github~\cite{Software:Mine}.
+
+\subsection{Centrality Analysis}
+For measuring the influence of any given user or content, I propose using the Katz centrality measure. Centrality measures provide a measure of how ``central'' a node in a graph is. The simplest of measures simply counts the in-degree of a node. The Katz centrality measure is defined as,
+\begin{definition}
+  Let \(A\in \R^{n\times n}\) be an adjacency matrix for an aperiodic graph \(G.\) Let \(0 < \alpha < \rho(A)\). The Katz centrality measure for node \(i\) is defined as,
+  \[
+    c_i = \sum_{k=1}^\infty{ \sum_{j=1}^n {\alpha^k \left( A^k \right)_{j,i}} }.
+  \]
+\end{definition}
+This measure counts the number of paths from all nodes in the graph to a given node \(i\), scoring paths of shorter length with a higher weight. The graph \(G'\) was shown in Claim~\cite{claim:g1:aperiodic} to be aperiodic and so we can use the Katz centrality measure on the induced adjacency matrix. Since \(G'\) is unweighted, we choose the natural weighting of \(1\) for all edges in the adjacency matrix. The implementation used is a custom script that employs an iterative technique that converges to the Katz centrality measure for all nodes~\cite{Notes:Network}.
+
+\subsection{Cluster Analysis}
+Spectral clustering is a family of techniques used for identifying disconnected components in a graph or, more generally, clusters of highly connected nodes using the graph Laplacian matrix. A survey of these techniques can be found in~\cite{Article:Survey}. I instead follow a variation of the simplest technique described in~\cite{Notes:Laplacian, Article:LaplacianTutorial}. We recall significant results used for spectral clustering now,
+\begin{definition}
+  Let \(A\in\R^{n \times n}\) and \(D\in\R^{n\times n}\) be the adjacency and out-degree matrix for the graph \(G_U.\) The graph Laplacian is defined as,
+  \[
+    L = D - A.
+  \]
+  The normalized graph Laplacian is defined as,
+  \[
+    L_{rw} = I - D^{-1}A.
+  \]
+\end{definition}
+\begin{theorem}[Properties of the Graph Laplacian~\cite{Notes:Network}]
+  The graph Laplacian and the normalized graph Laplacian enjoy the following properties,
+  \begin{enumerate}[label=(\alph*)]
+    \item{
+      Say graph \(G_U\) has \(n\) nodes with \(k\) connected components. Then \[\rank L_{rw} = \rank L = n - k.\]
+    }
+    \item{
+      The vector of all ones, \(\mathbf{1} \in \R^n\), is in \(\ker L_{rw} = \ker L.\) This vector evalutes the membership of all nodes to the graph.
+    }
+    \item{
+      The eigenvalues \(\lambda_i\) of \(L\) and \(L_{rw}\) can be arranged in the following manner,
+      \[
+        0 = \Re\{\lambda_1\} \leq \Re\{\lambda_2\} \leq \cdots \leq \Re\{\lambda_n\}.
+      \]
+    }
+  \end{enumerate}
+\end{theorem}
+The methodology to find a cluster within a graph is to bootstrap a clustering technique used in \(\R^m\), the \(k\)-means algorithm, by the eigenvectors of \(L_{rw}.\) This relies on the observation that the eigenvectors associated with eigenvalues at 0 are those that denote membership to a given connected component of the graph. Moreover, eigenvectors near zero can be thought of as measuring a partial membership to a cluster. As a result, we wish to find the eigenvectors of \(L_{rw}\) whose eigenvalues are near 0. This is not the best approach due to numerical instability of the eigenvalue algorithms used for sparse matrices. The choice to use \(L_{rw}\) alleviates the problems introduced by having a poor condition number, however we need to also employ a technique discussed by Frederix and Barel. They suggest instead looking at the matrix~\cite{Article:CholeskyLaplacian},
+\[
+  \hat{L}_{rw} = D^{-1}A.
+\]
+The matrix \(\hat{L}_{rw}\) has the same eigenvectors as \(L_{rw}\) while the eigenvalues shift. The eigenvalues instead move to be less than, or equal to, 1. This reformulation turns out to be much better suited to the numerical algorithms implemented to find eigenvalues of large sparse matrices.
+%{Article:CholeskyLaplacian}.
 
 \section{ANALYSIS}
+One subreddit of particular interest to myself is the \texttt{/r/uwaterloo} subreddit. This community consists to date over 26 thousand subscribers. The subreddit is famous for a goose-related subculture that resulted in a man receiving a goose tattoo on an unsavoury location of his body~\cite{Website:GooseTattoo}.
 
 %\addtolength{\textheight}{-12cm}   % This command serves to balance the column lengths
                                   % on the last page of the document manually. It shortens
@@ -221,7 +285,7 @@ The algorithms used
 %Appendixes should appear before the acknowledgment.
 
 \section*{ACKNOWLEDGEMENT}
-The author thanks Professor John Simpson for offering the special topics course on Networked and Distributed control, thereby providing the essential background for this analysis. The author also gives a special thanks to Reddit user {\red who did this} for uploading archived Reddit API data to {\red website please}. \cite{IEEEexample:bluebookstandard}
+The author thanks Professor John Simpson for offering the special topics course on Networked and Distributed control, thereby providing the essential background for this analysis. The author also gives a special thanks to Jason Baumgartner for uploading archived Reddit API data to \cite{Software:RedditArchive}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \bibliography{IEEEabrv,root.bib}
