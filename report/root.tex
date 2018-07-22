@@ -1,5 +1,7 @@
 \documentclass[letterpaper, 10 pt, conference]{ieeeconf}
 \usepackage[utf8]{inputenc}
+
+\usepackage{hyperref}
 \usepackage[ruled,algosection,vlined]{algorithm2e}
 \usepackage{hhline}
 \usepackage{tikz}
@@ -115,7 +117,7 @@ In order to reason about interesting content without temporal information or con
   \label{assume:5}
 \end{assumption}
 
-Assumptions~\ref{assume:1} and~\ref{assume:2} are the most contentious. They effectively assert that users engage with the platform in an intellectually curious manner. This is, at face value, absurd. On the other hand, the case can be made that even if users don't fully read content that they interact with, they at, the very minimum, skim and grasp the general gist of the content. This relaxation of the assumption is sufficient but doesn't lose the essential structure of interest implied by the assumptions. Specifically these two assumptions imply that we can infer a user is interested in content when we detect a comment made by the user. As a result, we take the first two assumptions as reasonable. Assumption~\ref{assume:3} is easy to see as reasonable. Even if the content posted is not owned by the user --- that is, a link to some other content --- the user is still introducing the content to the community and, as a result, acts as the influencing agent. It is not apparent at first glance that Assumption~\ref{assume:4} is reasonable. We discuss this later in the work and will establish its validity.
+Assumptions~\ref{assume:1} and~\ref{assume:2} are the most contentious. They effectively assert that users engage with the platform in an intellectually curious manner. This is, at face value, absurd. On the other hand, the case can be made that even if users don't fully read content that they interact with, they at, the very minimum, skim and grasp the general gist of the content. This relaxation of the assumption is sufficient but doesn't lose the essential structure of interest implied by the assumptions. Specifically these two assumptions imply that we can infer a user is interested in content when we detect a comment made by the user. As a result, we take the first two assumptions as reasonable. Assumption~\ref{assume:3} is easy to see as reasonable. Even if the content posted is not owned by the user --- that is, a link to some other content --- the user is still introducing the content to the community and, as a result, acts as the influencing agent. It is not apparent at first glance that Assumption~\ref{assume:4} is reasonable. The primary problem with deleted users and content is that the data only shows these with names ``[deleted]''. This results in a node with very high connectivity where there may not be any. For example, a user on post A may delete her comment while user B deletes his comment on another post. Both these comments will have author ``[deleted]'', translating what was two distinct authors into a single author. This can skew any analysis of the graph. The consequence is mentioned in Section~\ref{sec:analysis}. 
 
 \subsection{The Structure of Reddit}
 Reddit is a platform for users to submit content, named submissions, and to have other users comment on them. These submission come equipped with a title and either a body text, media or link to external content. These submissions are organized into large communities, known as subreddits, that which users may subscribe to. The structure can be visualized as in Figure~\ref{fig:model:reddit}.
@@ -266,14 +268,15 @@ The methodology to find a cluster within a graph is to bootstrap a clustering te
 \]
 The matrix \(\hat{L}_{rw}\) has the same eigenvectors as \(L_{rw}\) while the eigenvalues shift. The eigenvalues instead move to be less than, or equal to, 1. This reformulation turns out to be much better suited to the iterative numerical algorithms implemented to find eigenvalues of large sparse matrices.
 
-\section{ANALYSIS}
+\section{ANALYSIS}\label{sec:analysis}
 One subreddit of particular interest to myself is the \texttt{/r/uwaterloo} subreddit. This community consists to date of over 26 thousand subscribers. The subreddit is famous for a goose-related subculture that resulted in a man receiving a goose tattoo on an unsavoury location of his body~\cite{Website:GooseTattoo}. It also is home to a top comment created by lecturer Dave Tompkins that was made in response to a very strong criticism of his teaching style~\cite{Website:dtompkins}. Both posts made it to other more public subreddits, \texttt{/r/all} and \texttt{/r/bestof}. The latter comment was made in the time frame downloaded for the purpose of this analysis and so we expect either the comment, submission or user to show up in the interest analysis. Two other subreddits are evaluated: \texttt{/r/science} and \texttt{/r/CanadianInvestor}. The former is a large community where users post links to novel research for users to discuss. The latter is a more niche community where users can discuss investment strategies and get advice.
 
-Figure~\ref{fig:analysis:kats-table} contains the top ten nodes --- scored by the Katz centrality measure --- in graph \(G'\) as constructed for each individual subreddit of concern. 
+\subsection{Interest Analysis}
+Figure~\ref{fig:analysis:katz-table} contains the top ten nodes --- scored by the Katz centrality measure --- in graph \(G'\) as constructed for each individual subreddit of concern. First, we observe that \href{https://reddit.com/r/uwaterloo/comments/7w0dgv}{t3\_7w0dgv} is the post that sparked the response by Dave Tompkins; this, paired with personal observation of familiar users with significant reach in the community, confirms that the methodology used is leading to reasonable results.
 
-\subsection{\texttt{/r/uwaterloo}}
-The dataset consisted of atleast 8000 submission accompanied by 9000 active users. The top nodes consist of users that are well known in the community.
+Observe that \texttt{/r/science} top most interesting content is actually a submission, unlike the other two subreddits. This is easily explained by the nature of the community. The community is designed around submitting links to journal articles that can be discussed by other interested users. The community is large, with over 19 million subscribers. Not only this, but the sheer number of posts is breath-takingly large. So a user would have to be highly active in order to not be washed out by the number of other users and content interacting in the subreddit. As it turns out, the only user that made the top 10 is actually a moderator for this forum, \texttt{/u/mvea}. Unsurprisingly, the post that received the highest score is \href{https://reddit.com/r/science/comments/7e1jo1}{t3\_7e1jo1}, which is a post that discussed the implications of the new Trump tax policy on graduate students. This content garnered 100 thousand upvotes with nearly 11 thousand comments. The vast majority of active users on the subreddit were interested in this post, which isn't surprising; its content was pointed and of great relevance to the future of the community.
 
+Notably a bot, the \texttt{AutoModerator}, made it to the top of the ranking for \texttt{/r/science}. This may be because it comments a lot on a number of posts. It may be of value to detect bots and remove them from analysis and the author is displeased that he forgot about them.
 \begin{figure*}
   \centering
   \begin{tabular}{l|l|l}
@@ -289,14 +292,15 @@ The dataset consisted of atleast 8000 submission accompanied by 9000 active user
     mywaterlooaccount       & t3\_7sv8vb          & Ginhisf\\ \hline
     honhonhonFRFR           & t3\_7qs5xz          & MarketStorm
   \end{tabular}
-  \caption{Top scoring nodes under the Katz centrality measure for the \texttt{/r/uwaterloo}, \texttt{/r/science} and \texttt{/r/canadianinvestor} subreddits. Nodes prefixed with \texttt{t3\_} and \texttt{t1\_} are submissions and comments respectively. Other nodes are users.}
+  \caption{Top scoring nodes under the Katz centrality measure for the \texttt{/r/uwaterloo}, \texttt{/r/science} and \texttt{/r/canadianinvestor} subreddits. Nodes prefixed with \texttt{t3\_} and \texttt{t1\_} are submissions and comments respectively. Other nodes are users. To translate these id's to a link, simply follow the pattern \texttt{https://reddit.com/r/\{subreddit\}/comments/\{id\}}.}
   \label{fig:analysis:katz-table}
 \end{figure*}
+Now we address Assumption~\ref{assume:4}. It can be verified that the analysis including deleted users does not substantially permute the above ranking. In fact, for the top 10, no changes are observed besides a shift.
 
-\subsection{\texttt{/r/science}}
+\subsection{Cluster Analysis}
 
-\subsection{\texttt{/r/CanadianInvestor}}
 
+\section{CONCLUSION}
 
 %\addtolength{\textheight}{-12cm}   % This command serves to balance the column lengths
                                   % on the last page of the document manually. It shortens
