@@ -1,6 +1,7 @@
 \documentclass[letterpaper, 10 pt, conference]{ieeeconf}
 \usepackage[utf8]{inputenc}
 \usepackage[ruled,algosection,vlined]{algorithm2e}
+\usepackage{hhline}
 \usepackage{tikz}
 
 \let\proof\relax
@@ -29,7 +30,7 @@
 \bibliographystyle{./IEEEtran}
 
 \title{\LARGE \bf
-On Detection of Influential Users and Content on Reddit*
+On Detection of Users and Content of Interest on Reddit*
 }
 
 
@@ -73,8 +74,7 @@ On Detection of Influential Users and Content on Reddit*
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-{\red Fill in abstract.}
-
+Fill in abstract.
 \end{abstract}
 
 
@@ -88,10 +88,10 @@ On Detection of Influential Users and Content on Reddit*
 \section{MODELLING}
 
 \subsection{Assumptions}
-In order to reason about influential content without temporal information or content analysis, we make the following simplifying assumptions:
+In order to reason about interesting content without temporal information or content analysis, we make the following simplifying assumptions:
 
 \begin{assumption}
-  Users are influenced (positively or negatively) by content they read.
+  Users are interested (positively or negatively) by content they read.
   \label{assume:1}
 \end{assumption} 
 
@@ -101,16 +101,21 @@ In order to reason about influential content without temporal information or con
 \end{assumption}
 
 \begin{assumption}
-  Content is influenced by the content creator.
+  Content is made interesting by the content creator.
   \label{assume:3}
 \end{assumption}
 
 \begin{assumption}
-  Deleted users and content are not influential and do not affect other users in a meaningful way.
+  Deleted content and users are not interesting nor generate interesting content and do not affect other users in a meaningful way.
   \label{assume:4}
 \end{assumption}
 
-Assumptions~\ref{assume:1} and~\ref{assume:2} are the most contentious. They effectively assert that users engage with the platform in an intellectually curious manner. This is, at face value, absurd. On the other hand, the case can be made that even if users don't fully read content that they interact with, they at, the very minimum, skim and grasp the general gist of the content. This relaxation of the assumption is sufficient but doesn't lose the essential structure of influence implied by the assumptions. Specifically these two assumptions imply that we can infer a user is influenced by content when we detect a comment made by the user. As a result, we take the first two assumptions as reasonable. Assumption~\ref{assume:3} is easy to see as reasonable. Even if the content posted is not owned by the user --- that is, a link to some other content --- the user is still introducing the content to the community and, as a result, acts as the influencing agent. It is not apparent at first glance that Assumption~\ref{assume:4} is reasonable. We discuss this later in the work and will establish its validity.
+\begin{assumption}
+  Active engagement of users (through comments or submissions) is a good measure of interest.
+  \label{assume:5}
+\end{assumption}
+
+Assumptions~\ref{assume:1} and~\ref{assume:2} are the most contentious. They effectively assert that users engage with the platform in an intellectually curious manner. This is, at face value, absurd. On the other hand, the case can be made that even if users don't fully read content that they interact with, they at, the very minimum, skim and grasp the general gist of the content. This relaxation of the assumption is sufficient but doesn't lose the essential structure of interest implied by the assumptions. Specifically these two assumptions imply that we can infer a user is interested in content when we detect a comment made by the user. As a result, we take the first two assumptions as reasonable. Assumption~\ref{assume:3} is easy to see as reasonable. Even if the content posted is not owned by the user --- that is, a link to some other content --- the user is still introducing the content to the community and, as a result, acts as the influencing agent. It is not apparent at first glance that Assumption~\ref{assume:4} is reasonable. We discuss this later in the work and will establish its validity.
 
 \subsection{The Structure of Reddit}
 Reddit is a platform for users to submit content, named submissions, and to have other users comment on them. These submission come equipped with a title and either a body text, media or link to external content. These submissions are organized into large communities, known as subreddits, that which users may subscribe to. The structure can be visualized as in Figure~\ref{fig:model:reddit}.
@@ -136,7 +141,7 @@ Reddit is a platform for users to submit content, named submissions, and to have
 \end{figure}
 
 \subsection{Graph Model}
-Two models are used for analysis. The first models how influential content or users are on a given subreddit as a connection between two graphs. A visualization of the structure can be found in Figure~\ref{fig:model:hypergraph}. Graph \(G_P\) is the graph that captures the inherent structural relationship between submissions/comments. Assumptions~\ref{assume:1} and~\ref{assume:2} imply that a given submission is influenced by its comments. More generally, any parent content is directly influenced by its children. These are visualized as the blue edges in Figure~\ref{fig:model:hypergraph}. This is augmented using edges that relate users to submissions/comments. The second model attempts to capture which users converse with each other. This graph, \(G_U\), can be thought of as being generated by the graph created above.
+Two models are used for analysis. The first models how influential content or users are on a given subreddit as a connection between two graphs. A visualization of the structure can be found in Figure~\ref{fig:model:hypergraph}. Graph \(G_P\) is the graph that captures the inherent structural relationship between submissions/comments. Assumptions~\ref{assume:1} and~\ref{assume:2} imply that a given submission is influenced by its comments. More concretely, any parent content is made more interesting by its children. These are visualized as the blue edges in Figure~\ref{fig:model:hypergraph}. This is augmented using edges that relate users to submissions/comments. The second model attempts to capture which users converse with each other. This graph, \(G_U\), can be thought of as being generated by the graph created above.
 
 \begin{figure}
   \centering
@@ -175,9 +180,9 @@ Denote the set of users by \(U\) and the set of submissions and comments by \(P.
   \caption{Constructing \(E_P.\)}
   \label{alg:ep}
 \end{algorithm}
-We give edges in \(E_P\) a universal weight of \(1.\) Weighting using upvotes was considered but was determined to yield results that were not desireable. For one, it was not clear that upvotes were a meaningful method of ranking influence. Further complexity arises when considering controversial content, which has a mix of upvotes and downvotes. A highly controversial topic may be highly influential, which contradicts the idea that upvotes correlate with influence. Possibly given knowledge of the number of voters this problem could be alleviated. However, since not all subreddits release data about how many users voted, it is simpler to reduce the complexity by eliminating any non-trivial weighting method. Observe that \(G_P\) is a forest where the submissions act as roots of the trees.
+We give edges in \(E_P\) a universal weight of \(1.\) Weighting using upvotes was considered but was determined to yield results that were not desireable. For one, it was not clear that upvotes were a meaningful method of ranking interesting content. Further complexity arises when considering controversial content, which has a mix of upvotes and downvotes. A highly controversial topic may be highly interesting, which contradicts the idea that upvotes correlate with interest. Possibly given knowledge of the number of voters this problem could be alleviated. However, since not all subreddits release data about how many users voted, it is simpler to reduce the complexity by eliminating any non-trivial weighting method. Observe that \(G_P\) is a forest where the submissions act as roots of the trees.
 
-This structure is not interesting by itself and we need to extend it in order to facilitate analysis. The set of edges \(E_P^U\), that connects submissions/comments to users, is what brings the significant cross-post structure. \(E_P^U\) is generated in the manner described by Algorithm~\ref{alg:epu}. The rules are that: a comment author is influenced by the submission (root in \(G_P\)) and a comment author influences the comment. A more convoluted structure may be derived by instead having the comment author be influenced by the immediate parent comment. This structure was not investigated and could yield differing results. The argument for choosing the structure defined here is that authors may bring the whole context of the submission to a given comment, and not just the parent comment. The directed edge from the author to the submission allows us to model this sort of behaviour. That is, the user is influenced by all content on the submission page. This does ignore temporal effects, and so could yield incorrect results. On the other hand, the model not investigated is not as susceptible to temporal effects as it directly captures the temporal structure. However, it leaves out the ability to model any sort of larger contextual awareness the user may have.
+This structure is not interesting by itself and we need to extend it in order to facilitate analysis. The set of edges \(E_P^U\), that connects submissions/comments to users, is what brings the significant cross-post structure. \(E_P^U\) is generated in the manner described by Algorithm~\ref{alg:epu}. The rules are that: a comment author is interested in a submission (root in \(G_P\)) and a comment author makes a comment interesting. A more convoluted structure may be derived by instead having the comment author be interested in the immediate parent comment. This structure was not investigated and could yield differing results. The argument for choosing the structure defined here is that authors may bring the whole context of the submission to a given comment, and not just the parent comment. The directed edge from the author to the submission allows us to model this sort of behaviour. That is, the user is interested by all the content on the submission page. This does ignore temporal effects, and so could yield incorrect results. However, it leaves out the ability to model any sort of larger contextual awareness the user may have. On the other hand, the model not investigated is not as susceptible to temporal effects as it directly captures the temporal structure.
 \begin{algorithm}
   \ForAll{\(\mathtt{user} \in U\)}{
     \For{\(p \in P\) and \(\mathtt{user} = AuthorOf(p)\)}{
@@ -198,7 +203,7 @@ The structure described above may be augmented with self-edges for all users and
 \end{proof}
 
 \subsubsection{Graph Model for Cluster Analysis}
-Submissions and comments are not directly significant for identifying subgroups within a community of users. The model used here is restricted to a weighted digraph \(G_U = (U, E_U, W_U).\) However, we desire a method of constructing relationships between users that capture ``interaction'' between users. Algorithm~\ref{alg:eu} defines one such construction. It captures the idea that a user Bob is influenced strongly by another user Jenn if Bob comments a lot on content Jenn submits. The algorithm adds an additional requirement: that the interactions are unique modulo the root submission. This additional restrition attempts to count the number of ``conversations'' taking place between users without the need for explicit start and stop points.
+Submissions and comments are not directly significant for identifying subgroups within a community of users. The model used here is restricted to a weighted digraph \(G_U = (U, E_U, W_U).\) However, we desire a method of constructing relationships between users that capture ``interaction'' between users. Algorithm~\ref{alg:eu} defines one such construction. It captures the idea that a user Bob is interested in the content user Jenn creates if Bob comments a lot on content Jenn submits. The algorithm adds an additional requirement: that the interactions are unique modulo the root submission. This additional restrition attempts to count the number of ``conversations'' taking place between users without the need for explicit start and stop points.
 \begin{algorithm}
   \ForAll{\(p \in RootsOf(P)\)}{
     \(\mathtt{conversations} \gets \emptyset\)\;
@@ -212,19 +217,19 @@ Submissions and comments are not directly significant for identifying subgroups 
 {\red Complete explanation of the graph used for cluster analysis.}
 
 \section{IMPLEMENTATION}
-There are two methods of collecting Reddit submission and comment data. There is a live application programming interface (API) available for use, that provides live up-to-date data. The most natural API request available for downloading submissions is limited to the last 1000 submissions on a given subreddit. This substantially limits the amount of data available for collection; for some subreddits this constitutes only a few weeks of data. Other methods to getting this old data exist, but involve using the API in a convoluted manner. A user {\red find reddit user} addressed this problem and collated all data on Reddit for over ten years for the purpose of data analytics. The data can be found online, freely available for use, in an archived format~\cite{Software:RedditArchive}. Submissions and comments are stored in separate archives, organized by months or days. The data is stored in these files as compressed, line-delimited Javascript Objects (JSON).
+There are two methods of collecting Reddit submission and comment data. There is a live application programming interface (API) available for use, that provides live up-to-date data. The most natural API request available for downloading submissions is limited to the last 1000 submissions on a given subreddit. This substantially limits the amount of data available for collection; for some subreddits this constitutes only a few weeks of data. Other methods to getting this old data exist, but involve using the API in a convoluted manner. Baumgartner addressed this problem and collated all data on Reddit for over ten years for the purpose of data analytics. The data can be found online, freely available for use, in an archived format~\cite{Software:RedditArchive}. Submissions and comments are stored in separate archives, organized by months or days. The data is stored in these files as compressed, line-delimited Javascript Objects (JSON).
 
 The analysis focusses on data for the time frame starting at November 2017 and ending in February 2018. I developed a Python script that filters out unnecessary data from these archives and inserts the useful data into a Redis database, a fast in-memory key-value database~\cite{Software:Redis}. The software developed for this project and used for analysis is publicly available on Github~\cite{Software:Mine}.
 
 \subsection{Centrality Analysis}
-For measuring the influence of any given user or content, I propose using the Katz centrality measure. Centrality measures provide a measure of how ``central'' a node in a graph is. The simplest of measures simply counts the in-degree of a node. The Katz centrality measure is defined as,
+For measuring the interest of any given user or content, I propose using the Katz centrality measure. Centrality measures provide a measure of how ``central'' a node in a graph is. The simplest of measures simply counts the in-degree of a node. The Katz centrality measure is defined as,
 \begin{definition}
   Let \(A\in \R^{n\times n}\) be an adjacency matrix for an aperiodic graph \(G.\) Let \(0 < \alpha < \rho(A)\). The Katz centrality measure for node \(i\) is defined as,
   \[
     c_i = \sum_{k=1}^\infty{ \sum_{j=1}^n {\alpha^k \left( A^k \right)_{j,i}} }.
   \]
 \end{definition}
-This measure counts the number of paths from all nodes in the graph to a given node \(i\), scoring paths of shorter length with a higher weight. The graph \(G'\) was shown in Claim~\cite{claim:g1:aperiodic} to be aperiodic and so we can use the Katz centrality measure on the induced adjacency matrix. Since \(G'\) is unweighted, we choose the natural weighting of \(1\) for all edges in the adjacency matrix. The implementation used is a custom script that employs an iterative technique that converges to the Katz centrality measure for all nodes~\cite{Notes:Network}.
+This measure counts the number of paths from all nodes in the graph to a given node \(i\), scoring paths of shorter length with a higher weight. The graph \(G'\) was shown in Claim~\cite{claim:g1:aperiodic} to be aperiodic and so we can use the Katz centrality measure on the induced adjacency matrix. Since \(G'\) is unweighted, we choose the natural weighting of \(1\) for all edges in the adjacency matrix. The implementation is a custom script that employs an iterative technique converging to the Katz centrality measure for all nodes~\cite{Notes:Network}.
 
 \subsection{Cluster Analysis}
 Spectral clustering is a family of techniques used for identifying disconnected components in a graph or, more generally, clusters of highly connected nodes using the graph Laplacian matrix. A survey of these techniques can be found in~\cite{Article:Survey}. I instead follow a variation of the simplest technique described in~\cite{Notes:Laplacian, Article:LaplacianTutorial}. We recall significant results used for spectral clustering now,
@@ -259,11 +264,39 @@ The methodology to find a cluster within a graph is to bootstrap a clustering te
 \[
   \hat{L}_{rw} = D^{-1}A.
 \]
-The matrix \(\hat{L}_{rw}\) has the same eigenvectors as \(L_{rw}\) while the eigenvalues shift. The eigenvalues instead move to be less than, or equal to, 1. This reformulation turns out to be much better suited to the numerical algorithms implemented to find eigenvalues of large sparse matrices.
-%{Article:CholeskyLaplacian}.
+The matrix \(\hat{L}_{rw}\) has the same eigenvectors as \(L_{rw}\) while the eigenvalues shift. The eigenvalues instead move to be less than, or equal to, 1. This reformulation turns out to be much better suited to the iterative numerical algorithms implemented to find eigenvalues of large sparse matrices.
 
 \section{ANALYSIS}
-One subreddit of particular interest to myself is the \texttt{/r/uwaterloo} subreddit. This community consists to date over 26 thousand subscribers. The subreddit is famous for a goose-related subculture that resulted in a man receiving a goose tattoo on an unsavoury location of his body~\cite{Website:GooseTattoo}.
+One subreddit of particular interest to myself is the \texttt{/r/uwaterloo} subreddit. This community consists to date of over 26 thousand subscribers. The subreddit is famous for a goose-related subculture that resulted in a man receiving a goose tattoo on an unsavoury location of his body~\cite{Website:GooseTattoo}. It also is home to a top comment created by lecturer Dave Tompkins that was made in response to a very strong criticism of his teaching style~\cite{Website:dtompkins}. Both posts made it to other more public subreddits, \texttt{/r/all} and \texttt{/r/bestof}. The latter comment was made in the time frame downloaded for the purpose of this analysis and so we expect either the comment, submission or user to show up in the interest analysis. Two other subreddits are evaluated: \texttt{/r/science} and \texttt{/r/CanadianInvestor}. The former is a large community where users post links to novel research for users to discuss. The latter is a more niche community where users can discuss investment strategies and get advice.
+
+Figure~\ref{fig:analysis:kats-table} contains the top ten nodes --- scored by the Katz centrality measure --- in graph \(G'\) as constructed for each individual subreddit of concern. 
+
+\subsection{\texttt{/r/uwaterloo}}
+The dataset consisted of atleast 8000 submission accompanied by 9000 active users. The top nodes consist of users that are well known in the community.
+
+\begin{figure*}
+  \centering
+  \begin{tabular}{l|l|l}
+    \texttt{/r/uwaterloo}   & \texttt{/r/science} & \texttt{/r/CanadianInvestor} \\ \hhline{=|=|=}
+    supersonic63            & t3\_7e1jo1          & johnnychi \\ \hline
+    kw2002                  & AutoModerator       & EyesOnTsx\\ \hline
+    t3\_7f2c1d              & mvea                & jnf\_goonie\\ \hline
+    t3\_7w0dgv              & t3\_7vxito          & langlois44\\ \hline
+    t3\_7i045q              & t3\_7s6a9z          & t3\_7ii8af\\ \hline
+    microwavemasterrace     & t3\_7my58a          & t3\_7fapx7\\ \hline
+    uwsmile                 & t3\_7okc7u          & t3\_7pawu6\\ \hline
+    t3\_7ld2jb              & t3\_7hs6ro          & helkish\\ \hline
+    mywaterlooaccount       & t3\_7sv8vb          & Ginhisf\\ \hline
+    honhonhonFRFR           & t3\_7qs5xz          & MarketStorm
+  \end{tabular}
+  \caption{Top scoring nodes under the Katz centrality measure for the \texttt{/r/uwaterloo}, \texttt{/r/science} and \texttt{/r/canadianinvestor} subreddits. Nodes prefixed with \texttt{t3\_} and \texttt{t1\_} are submissions and comments respectively. Other nodes are users.}
+  \label{fig:analysis:katz-table}
+\end{figure*}
+
+\subsection{\texttt{/r/science}}
+
+\subsection{\texttt{/r/CanadianInvestor}}
+
 
 %\addtolength{\textheight}{-12cm}   % This command serves to balance the column lengths
                                   % on the last page of the document manually. It shortens
