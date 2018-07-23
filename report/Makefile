@@ -8,7 +8,7 @@ all: $(DOCUMENTS)
 clean:
 	rm -rf $(DOCUMENTS) *.aux *.log *.bbl *.blg
 
-report.pdf: root.tex root.bib
+report.pdf: root.tex root.bib figures/*.eps
 	$(PDFLATEX) root.tex
 	$(BIBTEX) root
 	$(PDFLATEX) root.tex

@@ -1,24 +1,23 @@
 \documentclass[letterpaper, 10 pt, conference]{ieeeconf}
-\usepackage[utf8]{inputenc}
 
-\usepackage{hyperref}
-\usepackage[ruled,algosection,vlined]{algorithm2e}
-\usepackage{hhline}
-\usepackage{tikz}
-
+% PDF And Document Related Packages
 \let\proof\relax
 \let\endproof\relax
-\usepackage{mathtools}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+
+% Mathematical Tooling and Drawing
+\let\labelindent\relax
+\usepackage[ruled,algosection,vlined]{algorithm2e}
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amsthm}
 \usepackage{amssymb}
-\usepackage{mathrsfs}
-
-
-\let\labelindent\relax
 \usepackage{enumitem}
-
+\usepackage{hhline}
+\usepackage{mathtools}
+\usepackage{mathrsfs}
+\usepackage{tikz}
 \usetikzlibrary{arrows,decorations,positioning,fit}
 
 \IEEEoverridecommandlockouts
@@ -82,10 +81,7 @@ On Detection of Users and Content of Interest on Reddit*
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{INTRODUCTION}
-{\red Talk about goals of project, pathway and where we ended up.}
-
-\section{BACKGROUND}
-{\red Talk about graph theory, centrality and Laplacians.}
+The goal of this project was to investigate how one can use the tools developed in class for the purpose of analyzing social networks. Social networks have a natural inherent graph-like structure that lend themselves to the tools provided by graph theory. A commonly used social network is Reddit. The Reddit platform provides users a place to submit content, either personal or externally linked, to a sub-community for the purpose of discussion. These communities are called subreddits. In this paper, I investigate an application of the Katz centrality measure to the graph structure of submissions, comments and users found on a given subreddit within a fixed time-frame in order to better understand the key content and players engaging in the community.
 
 \section{MODELLING}
 
@@ -121,7 +117,8 @@ Assumptions~\ref{assume:1} and~\ref{assume:2} are the most contentious. They eff
 
 \subsection{The Structure of Reddit}
 Reddit is a platform for users to submit content, named submissions, and to have other users comment on them. These submission come equipped with a title and either a body text, media or link to external content. These submissions are organized into large communities, known as subreddits, that which users may subscribe to. The structure can be visualized as in Figure~\ref{fig:model:reddit}.
-{\red Explain other possible related structure. Upvotes and Downvotes. Controversial}
+
+Reddit also relies on a voting system to rank content. These are known as upvotes (or downvotes for negative votes). These votes can be placed by users on submissions or comments in order to inform other users about the value of said content. Of course, this is not the only purpose (or even the one most intended) it is used for. Often users will downvote or upvote simply as a way of expressing disagreement or agreement. The resulting score of a given content is arrived at by a sum of the upvotes and downvotes, and various ``streams'' are constructed to sort based on these values.
 
 \begin{figure}
   \centering
@@ -233,7 +230,7 @@ For measuring the interest of any given user or content, I propose using the Kat
 \end{definition}
 This measure counts the number of paths from all nodes in the graph to a given node \(i\), scoring paths of shorter length with a higher weight. The graph \(G'\) was shown in Claim~\cite{claim:g1:aperiodic} to be aperiodic and so we can use the Katz centrality measure on the induced adjacency matrix. Since \(G'\) is unweighted, we choose the natural weighting of \(1\) for all edges in the adjacency matrix. The implementation is a custom script that employs an iterative technique converging to the Katz centrality measure for all nodes~\cite{Notes:Network}.
 
-\subsection{Cluster Analysis}
+\subsection{Cluster Analysis}\label{sec:implement:cluster}
 Spectral clustering is a family of techniques used for identifying disconnected components in a graph or, more generally, clusters of highly connected nodes using the graph Laplacian matrix. A survey of these techniques can be found in~\cite{Article:Survey}. I instead follow a variation of the simplest technique described in~\cite{Notes:Laplacian, Article:LaplacianTutorial}. We recall significant results used for spectral clustering now,
 \begin{definition}
   Let \(A\in\R^{n \times n}\) and \(D\in\R^{n\times n}\) be the adjacency and out-degree matrix for the graph \(G_U.\) The graph Laplacian is defined as,
@@ -268,15 +265,6 @@ The methodology to find a cluster within a graph is to bootstrap a clustering te
 \]
 The matrix \(\hat{L}_{rw}\) has the same eigenvectors as \(L_{rw}\) while the eigenvalues shift. The eigenvalues instead move to be less than, or equal to, 1. This reformulation turns out to be much better suited to the iterative numerical algorithms implemented to find eigenvalues of large sparse matrices.
 
-\section{ANALYSIS}\label{sec:analysis}
-One subreddit of particular interest to myself is the \texttt{/r/uwaterloo} subreddit. This community consists to date of over 26 thousand subscribers. The subreddit is famous for a goose-related subculture that resulted in a man receiving a goose tattoo on an unsavoury location of his body~\cite{Website:GooseTattoo}. It also is home to a top comment created by lecturer Dave Tompkins that was made in response to a very strong criticism of his teaching style~\cite{Website:dtompkins}. Both posts made it to other more public subreddits, \texttt{/r/all} and \texttt{/r/bestof}. The latter comment was made in the time frame downloaded for the purpose of this analysis and so we expect either the comment, submission or user to show up in the interest analysis. Two other subreddits are evaluated: \texttt{/r/science} and \texttt{/r/CanadianInvestor}. The former is a large community where users post links to novel research for users to discuss. The latter is a more niche community where users can discuss investment strategies and get advice.
-
-\subsection{Interest Analysis}
-Figure~\ref{fig:analysis:katz-table} contains the top ten nodes --- scored by the Katz centrality measure --- in graph \(G'\) as constructed for each individual subreddit of concern. First, we observe that \href{https://reddit.com/r/uwaterloo/comments/7w0dgv}{t3\_7w0dgv} is the post that sparked the response by Dave Tompkins; this, paired with personal observation of familiar users with significant reach in the community, confirms that the methodology used is leading to reasonable results.
-
-Observe that \texttt{/r/science} top most interesting content is actually a submission, unlike the other two subreddits. This is easily explained by the nature of the community. The community is designed around submitting links to journal articles that can be discussed by other interested users. The community is large, with over 19 million subscribers. Not only this, but the sheer number of posts is breath-takingly large. So a user would have to be highly active in order to not be washed out by the number of other users and content interacting in the subreddit. As it turns out, the only user that made the top 10 is actually a moderator for this forum, \texttt{/u/mvea}. Unsurprisingly, the post that received the highest score is \href{https://reddit.com/r/science/comments/7e1jo1}{t3\_7e1jo1}, which is a post that discussed the implications of the new Trump tax policy on graduate students. This content garnered 100 thousand upvotes with nearly 11 thousand comments. The vast majority of active users on the subreddit were interested in this post, which isn't surprising; its content was pointed and of great relevance to the future of the community.
-
-Notably a bot, the \texttt{AutoModerator}, made it to the top of the ranking for \texttt{/r/science}. This may be because it comments a lot on a number of posts. It may be of value to detect bots and remove them from analysis and the author is displeased that he forgot about them.
 \begin{figure*}
   \centering
   \begin{tabular}{l|l|l}
@@ -295,31 +283,40 @@ Notably a bot, the \texttt{AutoModerator}, made it to the top of the ranking for
   \caption{Top scoring nodes under the Katz centrality measure for the \texttt{/r/uwaterloo}, \texttt{/r/science} and \texttt{/r/canadianinvestor} subreddits. Nodes prefixed with \texttt{t3\_} and \texttt{t1\_} are submissions and comments respectively. Other nodes are users. To translate these id's to a link, simply follow the pattern \texttt{https://reddit.com/r/\{subreddit\}/comments/\{id\}}.}
   \label{fig:analysis:katz-table}
 \end{figure*}
-Now we address Assumption~\ref{assume:4}. It can be verified that the analysis including deleted users does not substantially permute the above ranking. In fact, for the top 10, no changes are observed besides a shift.
+
+\begin{figure*}
+  \centering
+  \includegraphics{figures/uwaterloo.eps}
+  \caption{Spectral clustering applied to reduced adjacency matrix for \texttt{/r/uwaterloo}.}
+  \label{fig:analysis:cluster1}
+\end{figure*}
+\begin{figure*}
+  \centering
+  \includegraphics{figures/science.eps}
+  \caption{Spectral clustering applied to reduced adjacency matrix for \texttt{/r/science}.}
+  \label{fig:analysis:cluster2}
+\end{figure*}
+\begin{figure*}
+  \centering
+  \includegraphics{figures/CanadianInvestor.eps}
+  \caption{Spectral clustering applied to reduced adjacency matrix for \texttt{/r/CanadianInvestor}.}
+  \label{fig:analysis:cluster3}
+\end{figure*}
+
+\section{ANALYSIS}\label{sec:analysis}
+One subreddit of particular interest to myself is the \texttt{/r/uwaterloo} subreddit. This community consists to date of over 26 thousand subscribers. The subreddit is famous for a goose-related subculture that resulted in a man receiving a goose tattoo on an unsavoury location of his body~\cite{Website:GooseTattoo}. It also is home to a top comment created by lecturer Dave Tompkins that was made in response to a very strong criticism of his teaching style~\cite{Website:dtompkins}. Both posts made it to other more public subreddits, \texttt{/r/all} and \texttt{/r/bestof}. The latter comment was made in the time frame downloaded for the purpose of this analysis and so we expect either the comment, submission or user to show up in the interest analysis. Two other subreddits are evaluated: \texttt{/r/science} and \texttt{/r/CanadianInvestor}. The former is a large community where users post links to novel research for users to discuss. The latter is a more niche community where users can discuss investment strategies and get advice.
+
+\subsection{Interest Analysis}\label{sec:analysis:interest}
+Figure~\ref{fig:analysis:katz-table} contains the top ten nodes --- scored by the Katz centrality measure --- in graph \(G'\) as constructed for each individual subreddit of concern. First, we observe that \href{https://reddit.com/r/uwaterloo/comments/7w0dgv}{t3\_7w0dgv} is the post that sparked the response by Dave Tompkins; this, paired with personal observation of familiar users with significant reach in the community, confirms that the methodology used is leading to reasonable results.
+
+Observe that \texttt{/r/science} top most interesting content is actually a submission, unlike the other two subreddits. This is easily explained by the nature of the community. The community is designed around submitting links to journal articles that can be discussed by other interested users. The community is large, with over 19 million subscribers. Not only this, but the sheer number of posts is breath-takingly large. So a user would have to be highly active in order to not be washed out by the number of other users and content interacting in the subreddit. As it turns out, the only user that made the top 10 is actually a moderator for this forum, \texttt{/u/mvea}. Unsurprisingly, the post that received the highest score is \href{https://reddit.com/r/science/comments/7e1jo1}{t3\_7e1jo1}, which is a post that discussed the implications of the new Trump tax policy on graduate students. This content garnered 100 thousand upvotes with nearly 11 thousand comments. The vast majority of active users on the subreddit were interested in this post, which isn't surprising; its content was pointed and of great relevance to the future of the community.
+
+Notably a bot, the \texttt{AutoModerator}, made it to the top of the ranking for \texttt{/r/science}. This may be because it comments a lot on a number of posts. It may be of value to detect bots and remove them from analysis and the author is displeased that he forgot about them.
+
+Now we address Assumption~\ref{assume:4}. It can be verified that the analysis including deleted users does not substantially permute the above ranking. In fact, for the top 10, no changes besides a shift in rank is observed for all three subreddits. Had there been a significant change in the ranking and it can be argued any results may be deemed uninsightful due to a lack of important information.
 
 \subsection{Cluster Analysis}
-
-
-\section{CONCLUSION}
-
-%\addtolength{\textheight}{-12cm}   % This command serves to balance the column lengths
-                                  % on the last page of the document manually. It shortens
-                                  % the textheight of the last page by a suitable amount.
-                                  % This command does not take effect until the next page
-                                  % so it should come on the page before the last. Make
-                                  % sure that you do not shorten the textheight too much.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%\section*{APPENDIX}
-%Appendixes should appear before the acknowledgment.
+Figures~\ref{fig:analysis:cluster1},~\ref{fig:analysis:cluster2},~\ref{fig:analysis:cluster3} show the results of applying the spectral clustering analysis discussed in Section~\ref{sec:implement:cluster}. Qualitatively we observe that the Waterloo subreddit has subclusters but no valuable insight can be gained on their nature. The most interesting of insights can be made in Figure~\ref{fig:analysis:cluster3}. In Section~\ref{sec:analysis:interest} we noted how the top 10 nodes were dominated by users. This is reflected in the spectral cluster, where a small group of users interact with almost every other user involved in the community. The spectral clusters for the science subreddit also yield interesting, very tight clusters but this warrants further investigation.
 
 \section*{ACKNOWLEDGEMENT}
 The author thanks Professor John Simpson for offering the special topics course on Networked and Distributed control, thereby providing the essential background for this analysis. The author also gives a special thanks to Jason Baumgartner for uploading archived Reddit API data to \cite{Software:RedditArchive}.
