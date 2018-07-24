@@ -204,16 +204,21 @@ The structure described above may be augmented with self-edges for all users and
 \subsubsection{Graph Model for Cluster Analysis}
 Submissions and comments are not directly significant for identifying subgroups within a community of users. The model used here is restricted to a weighted digraph \(G_U = (U, E_U, W_U).\) However, we desire a method of constructing relationships between users that capture ``interaction'' between users. Algorithm~\ref{alg:eu} defines one such construction. It captures the idea that a user Bob is interested in the content user Jenn creates if Bob comments a lot on content Jenn submits. The algorithm adds an additional requirement: that the interactions are unique modulo the root submission. This additional restrition attempts to count the number of ``conversations'' taking place between users without the need for explicit start and stop points.
 \begin{algorithm}
+  \(A_{:,:} \gets 0\)\;
   \ForAll{\(p \in RootsOf(P)\)}{
     \(\mathtt{conversations} \gets \emptyset\)\;
+    \(\mathtt{parentauthor} \gets AuthorOf(p)\)\;
     \For{\(p_2 \in ChildrenOf(p)\)}{
-      \;
+      \(\mathtt{author} \gets AuthorOf(p_2)\)\;
+      \If{\( (\mathtt{author}, \mathtt{parentauthor}) \notin \mathtt{conversations}\)}{
+        \(A_{\mathtt{author}, \mathtt{parentauthor}} = A_{\mathtt{author}, \mathtt{parentauthor}} + 1\)\;
+        \(\mathtt{conversations} \gets \mathtt{conversations} \cup \left\{ (\mathtt{author}, \mathtt{parentauthor})\right\} \)\;
+      }
     }
   }
   \caption{Constructing \(E_U.\)}
   \label{alg:eu}
 \end{algorithm}
-{\red Complete explanation of the graph used for cluster analysis.}
 
 \section{IMPLEMENTATION}
 There are two methods of collecting Reddit submission and comment data. There is a live application programming interface (API) available for use, that provides live up-to-date data. The most natural API request available for downloading submissions is limited to the last 1000 submissions on a given subreddit. This substantially limits the amount of data available for collection; for some subreddits this constitutes only a few weeks of data. Other methods to getting this old data exist, but involve using the API in a convoluted manner. Baumgartner addressed this problem and collated all data on Reddit for over ten years for the purpose of data analytics. The data can be found online, freely available for use, in an archived format~\cite{Software:RedditArchive}. Submissions and comments are stored in separate archives, organized by months or days. The data is stored in these files as compressed, line-delimited Javascript Objects (JSON).
