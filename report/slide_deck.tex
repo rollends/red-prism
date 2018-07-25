@@ -2,6 +2,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{hhline}
+\usepackage{hyperref}
 \usepackage{tikz}
 \usepackage{xcolor,colortbl}
 \usetikzlibrary{arrows,decorations,matrix,positioning,fit}
@@ -20,6 +21,20 @@
 \author{Rollen S. D'Souza \\ {\texttt{rollen.dsouza@uwaterloo.ca}}}
 \institute{University of Waterloo}
 \date{2018}
+
+%%%%%%%%%%%%% PDF Stuff
+\hypersetup{
+  pdfauthor = {Rollen S. D'Souza},
+  pdftitle = {Interesting Content and User Discovery without Upvotes},
+  pdfdisplaydoctitle = {true},
+  unicode = {true},
+  pdfsubject = {Social Network Science},
+  pdfkeywords = {network science, reddit},
+  pdfcreator = {\LaTeX with \flqq hyperref \flqq package},
+  pdfproducer = {dvips + ps2pdf},
+  pdfstartview={FitV}
+}
+%%%%%%%%%%%%
 
 \begin{document}
 
@@ -173,14 +188,14 @@
         & \node (comment_2) [post] {$P_3$}; & &\node (user_b) [user] {$U_b$};\\
       };
 
-      \path (post_a) edge[<-, blue, very thick] (comment_1)
-            (comment_1) edge[<-, blue, very thick] (comment_2);
+      \path (post_a) edge[->, blue, very thick] (comment_1)
+            (comment_1) edge[->, blue, very thick] (comment_2);
 
-      \path (post_a) edge[<-, dashed, very thick] (user_a);
-      \path (user_b) edge[<-, dashed, very thick] (post_a)
-            (user_b) edge[->, dashed, very thick] (comment_1);
-      \path (user_a) edge[<-, dashed, very thick] (comment_1)
-            (user_a) edge[->, dashed, very thick] (comment_2);
+      \path (post_a) edge[->, dashed, very thick] (user_a);
+      \path (user_b) edge[->, dashed, very thick] (post_a)
+            (user_b) edge[<-, dashed, very thick] (comment_1);
+      \path (user_a) edge[->, dashed, very thick] (comment_1)
+            (user_a) edge[<-, dashed, very thick] (comment_2);
 
       \path (user_a) edge[<-, red, very thick] (user_b)
             (user_a) edge[->, red, very thick] (user_b);
