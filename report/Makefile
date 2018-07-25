@@ -6,7 +6,7 @@ all: $(DOCUMENTS)
 	
 
 clean:
-	rm -rf $(DOCUMENTS) *.aux *.log *.bbl *.blg
+	rm -rf $(DOCUMENTS) *.aux *.log *.bbl *.blg *.nav *.out *.snm *.toc
 
 report.pdf: root.tex root.bib figures/*.eps
 	$(PDFLATEX) root.tex
