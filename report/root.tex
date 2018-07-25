@@ -180,7 +180,7 @@ Two models are used for analysis. The first models how influential content or us
     \path (post_a) edge[->, dashed, very thick] (user_a);
     \path (user_b) edge[->, dashed, very thick] (post_a)
           (user_b) edge[<-, dashed, very thick] (comment_1);
-    \path (user_a) edge[->, dashed, very thick] (comment_1)
+    \path (user_a) edge[->, dashed, very thick] (post_a)
           (user_a) edge[<-, dashed, very thick] (comment_2);
 
     \path (user_a) edge[<-, red, very thick] (user_b)
@@ -290,7 +290,7 @@ The methodology to find a cluster within a graph is to bootstrap a clustering te
 \[
   \hat{L}_{rw} = D^{-1}A.
 \]
-The matrix \(\hat{L}_{rw}\) has the same eigenvectors as \(L_{rw}\) while the eigenvalues shift. The eigenvalues instead move to be less than, or equal to, 1. This reformulation turns out to be much better suited to the iterative numerical algorithms implemented to find eigenvalues of large sparse matrices.
+The matrix \(\hat{L}_{rw}\) has the same eigenvectors as \(L_{rw}\) while the eigenvalues shift. The eigenvalues instead move to be less than, or equal to, 1. This reformulation turns out to be much better suited to the iterative numerical algorithms implemented to find eigenvalues of large sparse matrices. We note that the matrix \(D^{-1}\) is required to be invertible. This amounts to ensuring all nodes have a non-zero out-degree. The only context in which this would not occur in the graph of concern is if a user never interacted with another user's content. One can convince themselves that this would anyway lead to degenerate clusters and so we disregard these nodes from the analysis.
 
 \begin{figure*}
   \centering

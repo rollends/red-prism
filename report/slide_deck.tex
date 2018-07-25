@@ -31,8 +31,7 @@
   pdfsubject = {Social Network Science},
   pdfkeywords = {network science, reddit},
   pdfcreator = {\LaTeX with \flqq hyperref \flqq package},
-  pdfproducer = {dvips + ps2pdf},
-  pdfstartview={FitV}
+  pdfproducer = {dvips + ps2pdf}
 }
 %%%%%%%%%%%%
 
@@ -89,8 +88,45 @@
     \includegraphics[height=0.85\textheight, keepaspectratio=true]{figures/example_submission}
   \end{center}
 \end{frame}
+\begin{frame}[fragile, label=thegraph]
+  \frametitle{Structuring the Reddit Graph}
+  \begin{figure}
+    \centering
+    \begin{tikzpicture}[node distance=1em]
+      \matrix[row sep=1em, column sep=3em] {
+        & \node {$G_P$};& \node {$E_P^U$}; & \node {$G_U$};\\
+        & \node (post_a) [post] {$P_1$}; & & \node (user_a) [user] {$U_a$};\\
+        \node (comment_1) [post] {$P_2$}; & & & \\
+        & \node (comment_2) [post] {$P_3$}; & &\node (user_b) [user] {$U_b$};\\
+      };
 
-\subsection{Mathematical Preliminaries}
+      \path (post_a) edge[->, blue, very thick] (comment_1)
+            (comment_1) edge[->, blue, very thick] (comment_2);
+
+      \path (post_a) edge[->, dashed, very thick] (user_a);
+      \path (user_b) edge[->, dashed, very thick] (post_a)
+            (user_b) edge[<-, dashed, very thick] (comment_1);
+      \path (user_a) edge[->, dashed, very thick] (post_a)
+            (user_a) edge[<-, dashed, very thick] (comment_2);
+
+      \path (user_a) edge[<-, red, very thick] (user_b)
+            (user_a) edge[->, red, very thick] (user_b);
+    \end{tikzpicture}
+    \label{fig:model:hypergraph}
+  \end{figure}
+\end{frame}
+\begin{frame}
+  \frametitle{Structuring the Reddit Graph}
+  \framesubtitle{In Summary}
+  Key points about the graph structure,
+  \begin{itemize}
+    \item<2->{Adding self-edges to users makes \(G_P + E_P^U\) aperiodic.}
+    \item<3->{Only users can be sinks.}
+    \item<4->{User is a sink in \(G_U\)? \emph{They just submit, never comment.}}
+  \end{itemize}
+\end{frame}
+
+\subsection{The Mathematical Tools}
 \begin{frame}
   \frametitle{Mathematical Preliminaries}
   What I assume:
@@ -120,6 +156,7 @@
     \item{Intuitive meaning.}
   \end{itemize}
 \end{frame}
+\againframe{thegraph}
 \begin{frame}
   \frametitle{On Laplacians}
   Laplacians can be used for clustering. Recall,
@@ -127,9 +164,6 @@
     L = D_{out} - A.
   \]
   Use eigenvalues near 0 for clustering (eigenvectors associated with nearly disconnected components).
-  \pause
-
-  So...finding eigenvalues is easy right?
 \end{frame}
 \begin{frame}
   \frametitle{On Laplacians}
@@ -175,35 +209,6 @@
     \item<3->{Deleted content and users are not interesting nor generate interesting content and do not affect other users in a meaningful way.}
     \item<4->{Active engagement of users (through comments or submissions) is a good measure of interest.}
   \end{enumerate}
-\end{frame}
-\begin{frame}[fragile]
-  \frametitle{Structuring the Graph}
-  \begin{figure}
-    \centering
-    \begin{tikzpicture}[node distance=1em]
-      \matrix[row sep=1em, column sep=3em] {
-        & \node {$G_P$};& \node {$E_P^U$}; & \node {$G_U$};\\
-        & \node (post_a) [post] {$P_1$}; & & \node (user_a) [user] {$U_a$};\\
-        \node (comment_1) [post] {$P_2$}; & & & \\
-        & \node (comment_2) [post] {$P_3$}; & &\node (user_b) [user] {$U_b$};\\
-      };
-
-      \path (post_a) edge[->, blue, very thick] (comment_1)
-            (comment_1) edge[->, blue, very thick] (comment_2);
-
-      \path (post_a) edge[->, dashed, very thick] (user_a);
-      \path (user_b) edge[->, dashed, very thick] (post_a)
-            (user_b) edge[<-, dashed, very thick] (comment_1);
-      \path (user_a) edge[->, dashed, very thick] (comment_1)
-            (user_a) edge[<-, dashed, very thick] (comment_2);
-
-      \path (user_a) edge[<-, red, very thick] (user_b)
-            (user_a) edge[->, red, very thick] (user_b);
-    \end{tikzpicture}
-    \label{fig:model:hypergraph}
-  \end{figure}
-  \pause
-  Note that there are atleast 3 interesting graphs here. Where are they?
 \end{frame}
 
 \definecolor{litegreen}{HTML}{2ECC71}
